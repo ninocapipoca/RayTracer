@@ -7,7 +7,6 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
-// use headers!!!!!! one file for each class, import headers as necessary
 
 #include "include/stage.hpp"
 #include "include/ray.hpp"
@@ -15,6 +14,9 @@
 #include "include/vector.hpp"
 #include "include/light.hpp"
 #include "include/material.hpp"
+
+#define NB_RAYS         15
+#define ANTI_ALIASING   1
 
 double square(double a)
 {
@@ -37,6 +39,7 @@ void clamp_color(Vector &color) // and gamma correct
         }
     }
 }
+
 
 void tests()
 {
@@ -90,53 +93,57 @@ int main()
     {
         for (int j = 0; j < W; j++)
         {
-            // send ray through each pixel
-            // images from top left to bottom right
-            Vector u(j - W / 2 + 0.5, H / 2 - i - 0.5, -W / (2 * tan(fov / 2)));
+          std::cout << "each pixel" << std::endl;
+          int sent = 0;
+          double rand_x = 0;
+          double rand_y = 0;
+          double rand_z = 0;
+          Vector color = Vector(0,0,0);
+
+          while (sent < NB_RAYS){
+            #if ANTI_ALIASING == 1
+            std::cout << "attempting anti-aliasing" << std::endl;
+              double rand1 = rand()/double(RAND_MAX);
+              double rand2 = rand()/double(RAND_MAX);
+
+
+              rand_x = std::cos(2*M_PI*rand1)*std::sqrt(1-rand2);
+              rand_y = std::sin(2*M_PI*rand1)*std::sqrt(1-rand2);
+              rand_z = std::sqrt(rand2);
+           #endif
+
+
+
+            double x = (j + rand_y) - W / 2 + 0.5;
+            double y = H / 2 - (i+ rand_x) - 0.5;
+            double z = -W / (2 * tan(fov / 2));
+            Vector u = Vector(x,y,z);
+
+
+            sent++;
+
+            std::cout << u << std::endl;
             u.normalize();
 
             // Ray: origin, direction
             Ray cameraRay(u, camera);
-
-            // calculate intersect sphere
-            // Intersection raysphere = stage.calculate_intersect(cameraRay);
-            // if (raysphere.normal != Vector(0.0, 0.0, 0.0))
-            // {
-            //
-            //     // w_i is lightsource - intersection vector normalised, i.e. reflected direction
-            //     Vector w_i = (light_source.center - raysphere.intersect_pt);
-            //     w_i.normalize();
-            //     double d = distance(light_source.center, raysphere.intersect_pt);
-            //     // std::cout << distance << std::endl;
-            //     // std::cout << d << std::endl;
-            //
-            //     // added offset
-            //     Ray p_w_ray = Ray(w_i, raysphere.intersect_pt + 0.0001 * raysphere.normal);
-            //
-            //     // int visible = 1;
-            //     Intersection visib_test = stage.calculate_intersect(p_w_ray);
-            //     //std::cout << "albedo" << std::endl;
-            //     //std::cout << visib_test.albedo.data[0] << " " << visib_test.albedo.data[1] << " " << visib_test.albedo.data[2] << std::endl;
-            //     bool visible = (visib_test.normal == Vector(0.0, 0.0, 0.0)); // can we see the light source?
-            //
-            //     if (visib_test.t > d)
-            //     {
-            //         visible = true;
-            //     }
-
-            // std::cout << "visibility" << std::endl;
-            // std::cout << visible << std::endl;
-
-            // equivalent to the value of L in the lecture notes; gives color
-            // std::max(0.0,dot(raysphere.normal, w_i))
-            // Vector pixel_color = (intensity / (4 * M_PI * d * d)) * (raysphere.albedo / M_PI) * visible * dot(raysphere.normal, w_i);
             Vector pixel_color = stage.get_color(cameraRay, ray_depth);
-            clamp_color(pixel_color); // makes sure values are within 0 and 255
-            // Vector pixel_color = Vector(255,4,56);
+            color = color + (pixel_color/NB_RAYS);
+          }
 
-            image[(i * W + j) * 3 + 0] = pixel_color.data[0];
-            image[(i * W + j) * 3 + 1] = pixel_color.data[1];
-            image[(i * W + j) * 3 + 2] = pixel_color.data[2];
+
+
+
+            //Vector u(j - W / 2 + 0.5, H / 2 - i - 0.5, -W / (2 * tan(fov / 2)));
+            //u.normalize();
+
+            clamp_color(color); // makes sure values are within 0 and 255
+
+            // some sort of anti-aliasing here?
+
+            image[(i * W + j) * 3 + 0] = color.data[0];
+            image[(i * W + j) * 3 + 1] = color.data[1];
+            image[(i * W + j) * 3 + 2] = color.data[2];
             continue;
             //}
             std::cout << "A ray didnt hit anything?!" << std::endl;
